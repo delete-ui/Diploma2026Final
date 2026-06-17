@@ -1,0 +1,812 @@
+basePath: /api
+consumes:
+- application/json
+definitions:
+  models.AddToCartRequest:
+    properties:
+      battery_id:
+        type: string
+      quantity:
+        minimum: 1
+        type: integer
+    required:
+    - battery_id
+    - quantity
+    type: object
+  models.AddToFavoritesRequest:
+    properties:
+      battery_id:
+        type: string
+    required:
+    - battery_id
+    type: object
+  models.Battery:
+    properties:
+      brand:
+        type: string
+      capacity:
+        type: number
+      created_at:
+        type: string
+      id:
+        type: string
+      img:
+        type: string
+      polarity:
+        type: string
+      price:
+        type: number
+      sizeType:
+        type: string
+      standart:
+        type: string
+      stock:
+        type: integer
+      technology:
+        type: string
+      title:
+        type: string
+      updated_at:
+        type: string
+      voltage:
+        type: integer
+    type: object
+  models.ForgotPasswordRequest:
+    properties:
+      email:
+        type: string
+    required:
+    - email
+    type: object
+  models.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  models.LoginResponse:
+    properties:
+      access_token:
+        type: string
+      expires_in:
+        type: integer
+      token_type:
+        type: string
+      user:
+        $ref: '#/definitions/models.User'
+    type: object
+  models.RegisterRequest:
+    properties:
+      email:
+        type: string
+      password:
+        maxLength: 100
+        minLength: 6
+        type: string
+      username:
+        maxLength: 100
+        minLength: 3
+        type: string
+    required:
+    - email
+    - password
+    - username
+    type: object
+  models.ResetPasswordRequest:
+    properties:
+      code:
+        type: string
+      email:
+        type: string
+      new_password:
+        minLength: 6
+        type: string
+    required:
+    - code
+    - email
+    - new_password
+    type: object
+  models.UpdateCartItemRequest:
+    properties:
+      quantity:
+        minimum: 1
+        type: integer
+    required:
+    - quantity
+    type: object
+  models.User:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      is_verified:
+        type: boolean
+      role:
+        type: string
+      updated_at:
+        type: string
+      username:
+        type: string
+    type: object
+  models.VerifyEmailRequest:
+    properties:
+      code:
+        type: string
+      email:
+        type: string
+    required:
+    - code
+    - email
+    type: object
+  service.BatteryListResponse:
+    properties:
+      batteries:
+        items:
+          $ref: '#/definitions/models.Battery'
+        type: array
+      limit:
+        type: integer
+      page:
+        type: integer
+      total:
+        type: integer
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: |-
+    API для интернет-магазина автомобильных аккумуляторов.
+    Предоставляет функциональность для регистрации, аутентификации,
+    просмотра каталога аккумуляторов, управления корзиной,
+    избранным и оформления заказов(дипломная версия, non-production).
+    В связи с дипломной версией сервера все коды подтверждения выводятся в логи или в песочнице аккаунта mailtrap.
+  title: Battery Shop API
+  version: "1.0"
+paths:
+  /batteries:
+    get:
+      consumes:
+      - application/json
+      description: |-
+        Возвращает список всех доступных аккумуляторов с пагинацией.
+        По умолчанию возвращает 20 записей на странице, максимум 100.
+      parameters:
+      - default: 1
+        description: Номер страницы (начиная с 1)
+        in: query
+        minimum: 1
+        name: page
+        type: integer
+      - default: 20
+        description: Количество записей на странице
+        in: query
+        maximum: 100
+        minimum: 1
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список аккумуляторов с пагинацией
+          schema:
+            $ref: '#/definitions/service.BatteryListResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Список аккумуляторов
+      tags:
+      - batteries
+  /cart:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает все товары, находящиеся в корзине текущего пользователя.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Содержимое корзины
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Требуется авторизация
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Просмотр корзины
+      tags:
+      - cart
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Добавляет указанный аккумулятор в корзину пользователя.
+        Если товар уже есть в корзине, количество увеличивается.
+      parameters:
+      - description: ID аккумулятора и количество
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.AddToCartRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Товар добавлен в корзину
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Неверный формат запроса
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Требуется авторизация
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Добавить в корзину
+      tags:
+      - cart
+  /cart/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Удаляет указанный товар из корзины пользователя.
+      parameters:
+      - description: ID элемента корзины
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Товар удален
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Товар не найден
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Требуется авторизация
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Удалить из корзины
+      tags:
+      - cart
+    put:
+      consumes:
+      - application/json
+      description: Изменяет количество указанного товара в корзине.
+      parameters:
+      - description: ID элемента корзины
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Новое количество
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateCartItemRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Корзина обновлена
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Неверный запрос или товар не найден
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Требуется авторизация
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Обновить количество
+      tags:
+      - cart
+  /checkout:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Оформляет заказ на основе содержимого корзины.
+        Корзина очищается, создается запись о транзакции.
+        На email пользователя отправляется квитанция с деталями заказа.
+        Оформляет заказ на основе содержимого корзины. Не требует параметров — все товары берутся из корзины текущего пользователя.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Заказ успешно оформлен
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Корзина пуста или ошибка оформления
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Требуется авторизация
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Оформить заказ
+      tags:
+      - orders
+  /favorites:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает все аккумуляторы, добавленные пользователем в избранное.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список избранных аккумуляторов
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Требуется авторизация
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Просмотр избранного
+      tags:
+      - favorites
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Добавляет указанный аккумулятор в список избранного пользователя.
+        Если товар уже в избранном, запрос игнорируется.
+      parameters:
+      - description: ID аккумулятора
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.AddToFavoritesRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Добавлено в избранное
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Неверный формат запроса
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Требуется авторизация
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Добавить в избранное
+      tags:
+      - favorites
+  /favorites/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Удаляет указанный аккумулятор из списка избранного пользователя.
+      parameters:
+      - description: ID аккумулятора
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Удалено из избранного
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Товар не найден в избранном
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Требуется авторизация
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Удалить из избранного
+      tags:
+      - favorites
+  /forgot-password:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Отправляет код для сброса пароля на email пользователя.
+        Код действителен в течение 1 часа.
+        По соображениям безопасности всегда возвращает успех, даже если email не найден.
+      parameters:
+      - description: Email пользователя
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.ForgotPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Код отправлен (если email существует)
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Неверный формат запроса
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Ошибка валидации
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Забыли пароль
+      tags:
+      - auth
+  /login:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Аутентифицирует пользователя по email и паролю.
+        Возвращает JWT токен для доступа к защищенным эндпоинтам.
+        Токен необходимо передавать в заголовке Authorization: Bearer {token}.
+      parameters:
+      - description: Данные для входа
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешный вход
+          schema:
+            $ref: '#/definitions/models.LoginResponse'
+        "400":
+          description: Неверный формат запроса
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Неверный email или пароль
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Ошибка валидации
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Вход в систему
+      tags:
+      - auth
+  /orders:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает список всех заказов пользователя с деталями каждого
+        заказа.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список заказов с товарами
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Требуется авторизация
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: История заказов
+      tags:
+      - orders
+  /register:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Создает учетную запись пользователя и отправляет код подтверждения на указанный email.
+        После регистрации необходимо подтвердить email используя endpoint /verify-email.
+      parameters:
+      - description: Данные для регистрации
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Пользователь успешно создан
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Неверный формат запроса
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Пользователь уже существует
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Ошибка валидации
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Регистрация нового пользователя
+      tags:
+      - auth
+  /reset-password:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Устанавливает новый пароль с использованием кода из письма.
+        После успешного сброса можно войти с новым паролем.
+      parameters:
+      - description: Данные для сброса пароля
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.ResetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Пароль успешно изменен
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Неверный код или email
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Ошибка валидации
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Сброс пароля
+      tags:
+      - auth
+  /verify-email:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Подтверждает email пользователя с помощью кода, отправленного при регистрации.
+        После успешного подтверждения пользователь может войти в систему.
+      parameters:
+      - description: Код подтверждения
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.VerifyEmailRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Email успешно подтвержден
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Неверный код или email
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Ошибка валидации
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Подтверждение email
+      tags:
+      - auth
+produces:
+- application/json
+schemes:
+- http
+- https
+securityDefinitions:
+  BearerAuth:
+    description: 'Введите JWT токен в формате: **Bearer &lt;token&gt;**'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
+tags:
+- description: Операции аутентификации и управления пользователями
+  name: auth
+- description: Операции с каталогом аккумуляторов
+  name: batteries
+- description: Операции с корзиной покупок (требуется авторизация)
+  name: cart
+- description: Операции с избранными товарами (требуется авторизация)
+  name: favorites
+- description: Операции с заказами (требуется авторизация)
+  name: orders

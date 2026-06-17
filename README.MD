@@ -1,4 +1,4 @@
-# 🔋 Battery Shop API
+# Battery Shop API
 
 <div align="center">
 
